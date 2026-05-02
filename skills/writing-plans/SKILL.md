@@ -42,6 +42,50 @@ This structure informs the task decomposition. Each task should produce self-con
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
+## Code Block Discipline
+
+Inlining full implementation bodies is the most common bloat failure. A plan describes intent and contracts; it is not a working draft of the code itself. Subagents and skilled humans both write better code from a tight contract than from a verbatim recipe.
+
+**Reproducibility test:** Given the signature, types, data tables, and a 2–4 line algorithm summary, could a skilled dev reproduce a working implementation? If yes → omit the body. If no → keep it.
+
+**Always include in full:**
+- **Contract tests** — tests whose assertion *values* are the design: parser input→output cases, scheduler placement under specific calendar state, off-by-one edge cases, computational behavior with non-obvious mappings, and anything in a task whose function/hook/service is imported by a later task. These act as executable inter-task contracts — a subagent implementing a downstream task can rely on the asserted values without reading the upstream implementation. When in doubt, keep in full.
+- Type definitions, function signatures, API shapes.
+- Data tables and constants — priority maps, terrain rules, copy strings, magic numbers, TTLs, thresholds. These ARE the design.
+- Algorithms with off-by-one risk, undocumented invariants, or performance constraints (e.g. Bresenham walks, custom hashing, tight loops).
+- Irreversible ops — migrations, fs writes, network mutations.
+
+**Omit (replace with an outline block):**
+- Dispatch on union variants where each branch is a small obvious mutation.
+- Simple filter / map / reduce / sort over already-typed data.
+- Plumbing that calls already-specified helpers in sequence.
+- Getters, setters, thin wrappers, aliases.
+- Narration code — logs, telemetry events, push-event calls.
+- Structural UI tests — render-and-assert tests where the assertions are DOM presence, ARIA role, callback firing, or simple classname checks, AND the component is rendered only within the current task. Compress to a one-line behavior bullet so the implementer writes the RTL boilerplate. Keep in full whenever the component is reused in a later task or has non-obvious prop/state combinations.
+
+**Outline block template** — use this in place of an omitted body:
+
+```markdown
+**`functionName(args): ReturnType` — outline:**
+- Algorithm: <2–4 bullets, one per logical step>
+- Data tables (if any): <inline the table>
+- Edge cases: <only the non-obvious ones>
+- Side effects: <which fields on which objects, with magnitudes>
+```
+
+Magnitudes, field names, and table contents ARE the design — keep them. The boilerplate around them is not.
+
+**Test outline template** — for structural tests, use one bullet per behavior:
+
+```markdown
+- Test: <one-line behavior, naming the input event and the expected effect>
+  - e.g. "Test: clicking the row fires `onSelect` with the row's id"
+  - e.g. "Test: shows count badge only when count > 0"
+  - e.g. "Test: pressing Esc closes the slide-over"
+```
+
+The behavior line IS the spec. The implementer writes the test setup, render wrapper, and assertions.
+
 ## Plan Document Header
 
 **Every plan MUST start with this header:**
@@ -109,13 +153,13 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - "TBD", "TODO", "implement later", "fill in details"
 - "Add appropriate error handling" / "add validation" / "handle edge cases"
 - "Write tests for the above" (without actual test code)
-- "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
-- Steps that describe what to do without showing how (code blocks required for code steps)
+- "Similar to Task N" — pin the contract in the task that introduces it (types, signatures, schemas); reference it by name in later tasks
+- Steps that describe what to do without showing how — see Code Block Discipline for the full keep/omit rules (tests, types, signatures, data tables, non-trivial algorithms, irreversible ops) vs. what should be an outline block instead
 - References to types, functions, or methods not defined in any task
 
 ## Remember
 - Exact file paths always
-- Complete code in every step — if a step changes code, show the code
+- Tests, types, signatures, data tables in full; implementation bodies omitted unless they meet the keep-list in Code Block Discipline — use an outline block otherwise
 - Exact commands with expected output
 - DRY, YAGNI, TDD, frequent commits
 
@@ -128,6 +172,16 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**4. Body audit:** Two passes.
+
+*Implementation bodies:* for every code block over ~15 lines that isn't a test, type definition, or data table — does it pass the reproducibility test in Code Block Discipline? If yes, replace with an outline block. Magnitudes and table contents stay; dispatch boilerplate goes.
+
+*Test bodies:* for every test block, classify it.
+- **Contract test** (values are the design; consumed by another task) → keep in full.
+- **Structural test** (presence/role/callback/classname; single-task scope) → compress to a behavior bullet using the test outline template.
+
+If you can't tell which a test is, ask: "would removing this test's body force a downstream subagent to read this task's source code to know how to call the function?" If yes → contract; keep. If no → structural; compress.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 

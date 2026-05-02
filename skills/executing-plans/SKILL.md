@@ -29,9 +29,18 @@ For each task:
 3. Run verifications as specified
 4. Mark as completed
 
-### Step 3: Complete Development
+### Step 3: Post-Implementation Checklist
 
 After all tasks complete and verified:
+- **REQUIRED:** Run the post-implementation checklist:
+  1. Run the command `/simplify` to simplify the current changes.
+  2. Run the command `/review` to review the changes in the implementation step.
+  3. Fix the issues found by the above step.
+  4. Output a commit message for the implemented changes.
+
+### Step 4: Complete Development
+
+After the post-implementation checklist completes:
 - Announce: "I'm using the finishing-a-development-branch skill to complete this work."
 - **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
 - Follow that skill to verify tests, present options, execute choice
