@@ -9,7 +9,7 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 Guide completion of development work by presenting clear options and handling chosen workflow.
 
-**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+**Core principle:** Verify tests → Present options → Execute choice → Clean up merged local branches/worktrees.
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
 
@@ -80,11 +80,11 @@ git merge <feature-branch>
 # Verify tests on merged result
 <test command>
 
-# If tests pass
+# If tests pass, delete the merged local branch automatically
 git branch -d <feature-branch>
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: Cleanup worktree (Step 5). Do not ask again; Option 1 includes cleanup.
 
 #### Option 2: Push and Create PR
 
@@ -133,21 +133,31 @@ git branch -D <feature-branch>
 
 Then: Cleanup worktree (Step 5)
 
-### Step 5: Cleanup Worktree
+### Step 5: Cleanup Branch and Worktree
 
-**For Options 1, 2, 4:**
+**For Option 1:**
 
-Check if in worktree:
+After merged-result tests pass on `<base-branch>`:
 ```bash
-git worktree list | grep $(git branch --show-current)
-```
-
-If yes:
-```bash
+git branch -d <feature-branch>
 git worktree remove <worktree-path>
 ```
 
-**For Option 3:** Keep worktree.
+If the feature branch was not checked out in a linked worktree, skip `git worktree remove`.
+
+**For Option 2:** Keep the feature branch and worktree. The PR may need follow-up changes.
+
+**For Option 3:** Keep branch and worktree.
+
+**For Option 4:**
+
+After typed discard confirmation:
+```bash
+git worktree remove <worktree-path>
+git branch -D <feature-branch>
+```
+
+If no linked worktree exists, skip `git worktree remove`.
 
 ## Quick Reference
 
@@ -168,9 +178,13 @@ git worktree remove <worktree-path>
 - **Problem:** "What should I do next?" → ambiguous
 - **Fix:** Present exactly 4 structured options
 
-**Automatic worktree cleanup**
-- **Problem:** Remove worktree when might need it (Option 2, 3)
-- **Fix:** Only cleanup for Options 1 and 4
+**Leaving merged local branches/worktrees behind**
+- **Problem:** Completed local merges accumulate stale worktrees and branches
+- **Fix:** After Option 1 passes verification, automatically remove the feature worktree and delete the merged branch with `git branch -d`
+
+**Cleaning up PR branches too early**
+- **Problem:** Remove worktree when PR follow-up may be needed
+- **Fix:** Keep branch and worktree for Option 2
 
 **No confirmation for discard**
 - **Problem:** Accidentally delete work
@@ -181,14 +195,15 @@ git worktree remove <worktree-path>
 **Never:**
 - Proceed with failing tests
 - Merge without verifying tests on result
-- Delete work without confirmation
+- Delete unmerged or discarded work without confirmation
 - Force-push without explicit request
 
 **Always:**
 - Verify tests before offering options
 - Present exactly 4 options
 - Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
+- Clean up branch/worktree automatically for Option 1
+- Clean up branch/worktree for Option 4 only after typed confirmation
 
 ## Integration
 
