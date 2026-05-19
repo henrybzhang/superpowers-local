@@ -13,7 +13,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** This should be run in a dedicated worktree (created by brainstorming skill).
+**Context:** Planning and implementation should happen on a separate branch in a dedicated worktree. Use `superpowers:using-git-worktrees` before writing or executing plans unless the user explicitly says not to. Follow repository instructions for worktree location.
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
@@ -47,6 +47,20 @@ This structure informs the task decomposition. Each task should produce self-con
 Inlining full implementation bodies is the most common bloat failure. A plan describes intent and contracts; it is not a working draft of the code itself. Subagents and skilled humans both write better code from a tight contract than from a verbatim recipe.
 
 **Reproducibility test:** Given the signature, types, data tables, and a 2–4 line algorithm summary, could a skilled dev reproduce a working implementation? If yes → omit the body. If no → keep it.
+
+## Contract Precision Without Boilerplate
+
+Subagents and future plans may depend on exact interfaces from earlier tasks. Plans MUST pin these contract details wherever introduced:
+- Exact function, method, class, helper, constant, and file names.
+- Argument names and types, return types, and exported/internal visibility expectations.
+- Mutated fields, emitted events, persistence effects, and return-value shapes.
+- Formulas, thresholds, clamp ranges, enum/string values, and ordering rules.
+- Test names when later tasks or verification steps reference them.
+
+Do not preserve repeated setup boilerplate just to be explicit. If a test body is mostly fixture construction, repeated model initialization, or obvious arrange code:
+- Define or name a shared helper once with its exact signature and required field values.
+- For each test, list the variant inputs, action, and assertions.
+- Keep the full body only when the setup itself is the contract or would be hard to reconstruct safely.
 
 **Always include in full:**
 - **Contract tests** — tests whose assertion *values* are the design: parser input→output cases, scheduler placement under specific calendar state, off-by-one edge cases, computational behavior with non-obvious mappings, and anything in a task whose function/hook/service is imported by a later task. These act as executable inter-task contracts — a subagent implementing a downstream task can rely on the asserted values without reading the upstream implementation. When in doubt, keep in full.
@@ -101,6 +115,8 @@ The behavior line IS the spec. The implementer writes the test setup, render wra
 
 **Tech Stack:** [Key technologies/libraries]
 
+**Branch/Worktree:** Implement this plan on a separate branch in a dedicated worktree. Follow repository instructions for the worktree directory.
+
 ---
 ```
 
@@ -141,10 +157,11 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
-```
+Commit after this task.
+- Files: `tests/path/test.py`, `src/path/file.py`
+- Suggested subject: `feat: add specific feature`
+- Verification: `pytest tests/path/test.py::test_name -v`
+Follow the repository instruction file for commit format and body requirements.
 ````
 
 ## No Placeholders
@@ -159,9 +176,10 @@ Every step must contain the actual content an engineer needs. These are **plan f
 
 ## Remember
 - Exact file paths always
-- Tests, types, signatures, data tables in full; implementation bodies omitted unless they meet the keep-list in Code Block Discipline — use an outline block otherwise
+- Exact interfaces and contract values always; compress repeated setup boilerplate with named helpers and per-test behavior bullets
+- Tests, types, signatures, data tables in full when they define a contract; implementation bodies omitted unless they meet the keep-list in Code Block Discipline — use an outline block otherwise
 - Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, TDD, frequent commits; reference repository instruction files for detailed commit-message rules instead of repeating full commit commands
 
 ## Self-Review
 
@@ -180,6 +198,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 *Test bodies:* for every test block, classify it.
 - **Contract test** (values are the design; consumed by another task) → keep in full.
 - **Structural test** (presence/role/callback/classname; single-task scope) → compress to a behavior bullet using the test outline template.
+- **Fixture-heavy contract test** (assertions are important, setup is repeated boilerplate) → define a helper once with exact signature/required fields, then list each test's inputs/action/assertions.
 
 If you can't tell which a test is, ask: "would removing this test's body force a downstream subagent to read this task's source code to know how to call the function?" If yes → contract; keep. If no → structural; compress.
 
