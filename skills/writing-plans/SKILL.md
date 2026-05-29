@@ -15,9 +15,10 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** Planning and implementation should happen on a separate branch in a dedicated worktree. Use `superpowers:using-git-worktrees` before writing or executing plans unless the user explicitly says not to. Follow repository instructions for worktree location.
 
-**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+**Save plans to:** `PLAN.md` at project/worktree root
 - (User preferences for plan location override this default)
 - Keep the plan as a local working artifact: available for execution, left untracked, and excluded from commits
+- Update `MILESTONE.md` at project/worktree root when splitting into multiple milestones/campaign slices
 
 ## Scope Check
 
@@ -239,7 +240,7 @@ addressing findings, and do not keep looping for Nits only.
 
 After saving the plan, offer execution choice:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `PLAN.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 
