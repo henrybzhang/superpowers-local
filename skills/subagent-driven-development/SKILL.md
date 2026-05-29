@@ -55,14 +55,14 @@ digraph process {
         "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
         "Implementer subagent fixes spec gaps" [shape=box];
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
-        "Code quality reviewer subagent approves?" [shape=diamond];
+        "Code quality reviewer approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
         "Mark task complete in TodoWrite" [shape=box];
     }
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
-    "Dispatch final code reviewer subagent for entire implementation" [shape=box];
+    "Run final review-code for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
@@ -75,50 +75,52 @@ digraph process {
     "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
     "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
     "Spec reviewer subagent confirms code matches spec?" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="yes"];
-    "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
-    "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
+    "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer approves?";
+    "Code quality reviewer approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
+    "Code quality reviewer approves?" -> "Mark task complete in TodoWrite" [label="yes"];
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
-    "Dispatch final code reviewer subagent for entire implementation" -> "Use superpowers:finishing-a-development-branch";
+    "More tasks remain?" -> "Run final review-code for entire implementation" [label="no"];
+    "Run final review-code for entire implementation" -> "Use superpowers:finishing-a-development-branch";
 }
 ```
 
-## Cross-Harness Review Routing
+## Review Routing
 
-For every review checkpoint in this skill (spec compliance, code quality,
-re-review, and final review), prefer a read-only reviewer running on the
-opposite harness instead of a same-harness reviewer subagent.
+Per-task review checkpoints are intentionally targeted and run through the local
+prompt templates:
 
-Use the review skills from `../custom-commands` for the work product:
-- **Implementation/code review:** `review-code <base-ref>..HEAD against <plan-file>; focus: <spec compliance|code quality|final review>`
-- **Plan review, if needed:** `review-plan <plan-file> <spec-file>`
-- **Spec review, if needed:** `review-spec <spec-file>`
+- `./spec-reviewer-prompt.md` checks task-level spec compliance.
+- `./code-quality-reviewer-prompt.md` checks task-level implementation quality.
 
-**If running in Codex:** use OpenCode with DeepSeek, using OpenCode's default
-agent. Do not pass `--agent`. Run this command outside the Codex sandbox.
+Do not use `review-code`, `review-plan`, or `review-spec` for every task. Those
+review skills are full-artifact reviews and are too heavy for per-task gates.
+
+After all tasks are complete, run one full read-only implementation review with
+the `review-code` skill from `../custom-commands/review-code`.
+
+**If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
 
 ```bash
-OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
-opencode run "Use my skills. Use the <review-skill> skill. Arguments: <arguments>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+opencode-review-code current implementation against <plan-file>
 ```
 
-**If running in OpenCode:** ask it to run Codex with GPT-5.5 and medium
-reasoning effort in read-only mode.
+**If running in OpenCode:** run the Codex wrapper.
 
-```text
-Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the <review-skill> skill. Arguments: <arguments>"`?
+```bash
+codex-review-code current implementation against <plan-file>
 ```
 
 The reviewer is advisory. The controller decides whether each comment is valid,
 explains any rejected feedback, and sends only valid fixes back to the
-implementer. Reviewers must not edit files, run lint, run tests, install
-dependencies, or perform cleanup. The implementer must already have run the
-task's required verification before review starts.
+implementer. Reviewers may run targeted, non-destructive checks as allowed by
+the review skill. They must not edit files, install dependencies, update
+snapshots, regenerate committed artifacts, run migrations against real services,
+start long-lived processes, or perform cleanup. The implementer must already
+have run the task's required verification before review starts.
 
-**Review loop:** Run at most 6 review/address iterations for each checkpoint.
+**Final review loop:** Run at most 6 review/address iterations.
 Each iteration is: run the review command, read the returned review, address the
 review, then re-run the review command if needed. Stop when the review skill
 returns `Verdict: Approve` or otherwise says no Required/Concern improvements
@@ -129,8 +131,8 @@ disagrees with all Required/Concern suggestions in an iteration, stop the loop
 and record the disagreement for the human partner. Do not run reviews
 back-to-back without addressing findings, and do not keep looping for Nits only.
 
-If the opposite harness or target model is unavailable, fall back to the normal
-same-harness reviewer subagent and note the fallback in the task report.
+If the opposite harness or target model is unavailable, fall back to a same-
+harness `review-code` invocation and note the fallback in the task report.
 
 ## Model Selection
 
@@ -244,7 +246,7 @@ Code reviewer: ✅ Approved
 ...
 
 [After all tasks]
-[Dispatch final code-reviewer]
+[Run final review-code]
 Final reviewer: All requirements met, ready to merge
 
 Done!
@@ -318,7 +320,7 @@ Done!
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code review template for reviewer subagents
+- **review-code** from `../custom-commands/review-code` - Read-only implementation review
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**

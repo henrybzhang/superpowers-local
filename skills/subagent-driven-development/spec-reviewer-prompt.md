@@ -5,7 +5,7 @@ Use this template when running a spec compliance reviewer.
 **Purpose:** Verify implementer built what was requested (nothing more, nothing less)
 
 ```
-Task tool (general-purpose) or cross-harness reviewer:
+Task tool (general-purpose):
   description: "Review spec compliance for Task N"
   prompt: |
     You are reviewing whether an implementation matches its specification.
@@ -18,12 +18,13 @@ Task tool (general-purpose) or cross-harness reviewer:
 
     [From implementer's report]
 
-    ## Read-Only Review Contract
+    ## Review-Only Contract
 
-    You are a reviewer only. Do not edit files, run lint, run tests, install
-    dependencies, or perform cleanup. The implementer was responsible for
-    verification before review. If verification is missing or inadequate, report
-    that as an issue instead of running it yourself.
+    You may run targeted, non-destructive checks, but do not edit files,
+    install dependencies, update snapshots, regenerate committed artifacts, run
+    migrations against real services, start long-lived processes, or perform
+    cleanup. The implementer was responsible for verification before review. If
+    verification is missing or inadequate, report that as an issue.
 
     ## CRITICAL: Do Not Trust the Report
 

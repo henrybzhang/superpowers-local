@@ -12,7 +12,7 @@ echo "========================================"
 echo ""
 echo "This test verifies the document review system by:"
 echo "  1. Creating a spec with intentional errors"
-echo "  2. Running the spec document reviewer"
+echo "  2. Running the review-spec skill"
 echo "  3. Verifying the reviewer catches the errors"
 echo ""
 
@@ -76,18 +76,11 @@ echo ""
 # Run Claude to review the spec
 OUTPUT_FILE="$TEST_PROJECT/claude-output.txt"
 
-PROMPT="You are testing the spec document reviewer.
+PROMPT="Use my skills. Use the review-spec skill.
 
-Read the spec-document-reviewer-prompt.md template in skills/brainstorming/ to understand the review format.
+Arguments: $TEST_PROJECT/docs/superpowers/specs/test-feature-design.md
 
-Then review the spec at $TEST_PROJECT/docs/superpowers/specs/test-feature-design.md using the criteria from that template.
-
-Look for:
-- TODOs, placeholders, 'TBD', incomplete sections
-- Sections saying 'to be defined later' or 'will spec when X is done'
-- Sections noticeably less detailed than others
-
-Output your review in the format specified in the template."
+Return only the review."
 
 echo "================================================================================"
 cd "$SCRIPT_DIR/../.." && timeout 120 claude -p "$PROMPT" --permission-mode bypassPermissions 2>&1 | tee "$OUTPUT_FILE" || {

@@ -210,24 +210,24 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 After self-review passes, run a read-only external plan review with the
 `review-plan` skill from `../custom-commands/review-plan`.
 
-**If running in Codex:** use OpenCode with DeepSeek, using OpenCode's default
-agent. Do not pass `--agent`. Run this command outside the Codex sandbox.
+**If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
 
 ```bash
-OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
-opencode run "Use my skills. Use the review-plan skill. Arguments: <plan-file> <spec-file>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+opencode-review-plan <plan-file> <spec-file>
 ```
 
-**If running in OpenCode:** ask it to run Codex with GPT-5.5 and medium
-reasoning effort in read-only mode.
+**If running in OpenCode:** run the Codex wrapper.
 
-```text
-Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the review-plan skill. Arguments: <plan-file> <spec-file>"`?
+```bash
+codex-review-plan <plan-file> <spec-file>
 ```
 
-The reviewer must not edit files, run lint, run tests, install dependencies, or
-perform cleanup. If the opposite harness or target model is unavailable, run the
-review in the current harness and note the fallback before offering execution.
+The reviewer may run targeted, non-destructive checks as allowed by the review
+skill. It must not edit files, install dependencies, update snapshots,
+regenerate committed artifacts, run migrations against real services, start
+long-lived processes, or perform cleanup. If the opposite harness or target
+model is unavailable, run the review in the current harness and note the
+fallback before offering execution.
 
 **Review loop:** Run at most 6 review/address iterations. Each iteration is:
 run the review command, read the returned review, address the review, then

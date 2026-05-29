@@ -6,25 +6,38 @@ Use this template when running a code quality reviewer.
 
 **Only dispatch after spec compliance review passes.**
 
-**Read-only review:** Do not edit files, run lint, run tests, install
-dependencies, or perform cleanup. The implementer must have run verification
-before review; flag missing or inadequate verification as an issue instead of
-running it yourself.
+**Review-only:** You may run targeted, non-destructive checks, but do not edit
+files, install dependencies, update snapshots, regenerate committed artifacts,
+run migrations against real services, start long-lived processes, or perform
+cleanup.
 
-```
-Task tool (general-purpose) or cross-harness reviewer:
-  Use template at requesting-code-review/code-reviewer.md
+Use this as a targeted per-task review prompt, not as a full implementation
+review. The full four-lane code review runs only after all tasks are complete.
 
-  DESCRIPTION: [task summary, from implementer's report]
-  PLAN_OR_REQUIREMENTS: Task N from [plan-file]
-  BASE_SHA: [commit before task]
-  HEAD_SHA: [current commit]
-```
+## What Was Requested
 
-**In addition to standard code quality concerns, the reviewer should check:**
-- Does each file have one clear responsibility with a well-defined interface?
-- Are units decomposed so they can be understood and tested independently?
-- Is the implementation following the file structure from the plan?
-- Did this implementation create new files that are already large, or significantly grow existing files? (Don't flag pre-existing file sizes — focus on what this change contributed.)
+[FULL TEXT of task requirements]
 
-**Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment
+## What Implementer Claims They Built
+
+[From implementer's report]
+
+## Changed Code
+
+Review the task diff, usually `<commit-before-task>..HEAD`, and inspect the
+changed files plus nearby context needed to judge this task.
+
+## Your Job
+
+Verify the task implementation is well-built:
+
+- Does each changed file have a clear responsibility?
+- Are changed units decomposed so they can be understood and tested?
+- Does the implementation follow the file structure and ownership in the plan?
+- Are tests or validation evidence meaningful for this task?
+- Did this task introduce avoidable duplication, unnecessary abstraction, or
+  needless complexity?
+- Did this task create new files that are already large, or significantly grow
+  existing files in a way that makes the task harder to understand?
+
+**Code reviewer returns:** `Verdict: Approve | Revise` with Required, Concern, or Nit findings.

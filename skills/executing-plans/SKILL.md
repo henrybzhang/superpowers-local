@@ -36,14 +36,13 @@ After all tasks complete and verified:
   1. Run the command `/simplify` to simplify the current changes.
   2. Run a read-only cross-harness review of the completed implementation.
      Use `review-code current implementation against <plan-file>`.
-     - If running in Codex, use OpenCode with DeepSeek and the default OpenCode agent (do not pass `--agent`):
+     - If running in Codex, run the OpenCode wrapper outside the Codex sandbox:
        ```bash
-       OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
-       opencode run "Use my skills. Use the review-code skill. Arguments: current implementation against <plan-file>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+       opencode-review-code current implementation against <plan-file>
        ```
-     - If running in OpenCode, ask it to run Codex with GPT-5.5 and medium reasoning effort in read-only mode:
-       ```text
-       Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the review-code skill. Arguments: current implementation against <plan-file>"`?
+     - If running in OpenCode, run the Codex wrapper:
+       ```bash
+       codex-review-code current implementation against <plan-file>
        ```
      - If the opposite harness or target model is unavailable, fall back to `/review` and note the fallback.
   3. Run the review loop at most 6 review/address iterations. Each iteration is:
@@ -57,9 +56,12 @@ After all tasks complete and verified:
      only.
   4. Output a commit message for the implemented changes.
 
-The reviewer must not edit files, run lint, run tests, install dependencies, or
-perform cleanup. Code ready for review must already have been linted/tested by
-the implementer according to the plan's verification steps.
+The reviewer may run targeted, non-destructive checks as allowed by
+`review-code`. It must not edit files, install dependencies, update snapshots,
+regenerate committed artifacts, run migrations against real services, start
+long-lived processes, or perform cleanup. Code ready for review must already
+have been linted/tested by the implementer according to the plan's verification
+steps.
 
 ### Step 4: Complete Development
 
