@@ -45,15 +45,12 @@ After all tasks complete and verified:
        codex-review-code current implementation against <plan-file>
        ```
      - If the opposite harness or target model is unavailable, fall back to `/review` and note the fallback.
-  3. Run the review loop at most 6 review/address iterations. Each iteration is:
-     run the review command, read the returned review, address the review, then
-     re-run the review command if needed. Stop on `Verdict: Approve` or no
-     Required/Concern improvements; otherwise fix valid Required/Concern
-     feedback and explain rejected feedback before the next review. If the base
-     implementer disagrees with all Required/Concern suggestions in an
-     iteration, stop the loop and record the disagreement. Do not run reviews
-     back-to-back without addressing findings, and do not keep looping for Nits
-     only.
+  3. Follow `workflow-policy` for interactive implementation sessions:
+     `review-code`, at most 3 review/address iterations, stop on
+     `Verdict: Approve` or when no accepted Required/Concern improvements
+     remain. Apply valid feedback, explain rejected feedback briefly, never run
+     reviews back-to-back without addressing findings, and do not keep looping
+     for Nits only.
   4. Output a commit message for the implemented changes.
 
 The reviewer may run targeted, non-destructive checks as allowed by

@@ -120,15 +120,10 @@ snapshots, regenerate committed artifacts, run migrations against real services,
 start long-lived processes, or perform cleanup. The implementer must already
 have run the task's required verification before review starts.
 
-**Final review loop:** Run at most 6 review/address iterations.
-Each iteration is: run the review command, read the returned review, address the
-review, then re-run the review command if needed. Stop when the review skill
-returns `Verdict: Approve` or otherwise says no Required/Concern improvements
-remain. If it returns `Verdict: Revise`, the base implementer decides whether
-each Required/Concern suggestion is valid. Apply valid feedback and explain
-rejected feedback briefly before the next review. If the base implementer
-disagrees with all Required/Concern suggestions in an iteration, stop the loop
-and record the disagreement for the human partner. Do not run reviews
+**Final review loop:** Follow `workflow-policy` for interactive implementation
+sessions: `review-code`, at most 3 review/address iterations, stop on
+`Verdict: Approve` or when no accepted Required/Concern improvements remain.
+Apply valid feedback, explain rejected feedback briefly, never run reviews
 back-to-back without addressing findings, and do not keep looping for Nits only.
 
 If the opposite harness or target model is unavailable, fall back to a same-
