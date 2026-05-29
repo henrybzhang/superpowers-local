@@ -1,6 +1,6 @@
 # Code Reviewer Prompt Template
 
-Use this template when dispatching a code reviewer subagent.
+Use this template when running a code reviewer.
 
 **Purpose:** Review completed work against requirements and code quality standards before it cascades into more work.
 
@@ -29,6 +29,13 @@ Task tool (general-purpose):
     git diff --stat {BASE_SHA}..{HEAD_SHA}
     git diff {BASE_SHA}..{HEAD_SHA}
     ```
+
+    ## Read-Only Review Contract
+
+    You are a reviewer only. Do not edit files, run lint, run tests, install
+    dependencies, or perform cleanup. The implementer should have completed
+    verification before review. If verification is missing, stale, or inadequate,
+    report that as a review issue instead of running it yourself.
 
     ## What to Check
 

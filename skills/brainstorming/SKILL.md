@@ -28,8 +28,9 @@ You MUST create a task for each of these items and complete them in order:
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
 6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` as a local working artifact left out of commits
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+8. **Cross-harness spec review** — run `review-spec` on the written spec
+9. **User reviews written spec** — ask user to review the spec file before proceeding
+10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
@@ -44,6 +45,7 @@ digraph brainstorming {
     "User approves design?" [shape=diamond];
     "Write design doc" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
+    "Cross-harness spec review\n(review-spec)" [shape=box];
     "User reviews spec?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
 
@@ -57,13 +59,15 @@ digraph brainstorming {
     "User approves design?" -> "Present design sections" [label="no, revise"];
     "User approves design?" -> "Write design doc" [label="yes"];
     "Write design doc" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
+    "Spec self-review\n(fix inline)" -> "Cross-harness spec review\n(review-spec)";
+    "Cross-harness spec review\n(review-spec)" -> "Write design doc" [label="issues"];
+    "Cross-harness spec review\n(review-spec)" -> "User reviews spec?" [label="approved"];
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
     "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
 }
 ```
 
-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+**The terminal state is invoking writing-plans after the review gates pass.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill.
 
 ## The Process
 
@@ -123,6 +127,40 @@ After writing the spec document, look at it with fresh eyes:
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
+**Cross-Harness Spec Review:**
+After self-review passes, run a read-only external spec review with the
+`review-spec` skill from `../custom-commands/review-spec`.
+
+**If running in Codex:** use OpenCode with DeepSeek, using OpenCode's default
+agent. Do not pass `--agent`. Run this command outside the Codex sandbox.
+
+```bash
+OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
+opencode run "Use my skills. Use the review-spec skill. Arguments: <spec-file>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+```
+
+**If running in OpenCode:** ask it to run Codex with GPT-5.5 and medium
+reasoning effort in read-only mode.
+
+```text
+Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the review-spec skill. Arguments: <spec-file>"`?
+```
+
+The reviewer must not edit files, run lint, run tests, install dependencies, or
+perform cleanup. If the opposite harness or target model is unavailable, run the
+review in the current harness and note the fallback before user review.
+
+**Review loop:** Run at most 6 review/address iterations. Each iteration is:
+run the review command, read the returned review, address the review, then
+re-run the review command if needed. Stop when `review-spec` returns
+`Verdict: Approve` or otherwise says no Required/Concern improvements remain.
+If it returns `Verdict: Revise`, the base spec writer decides whether each
+Required/Concern suggestion is valid. Apply valid feedback and explain rejected
+feedback briefly before the next review. If the spec writer disagrees with all
+Required/Concern suggestions in an iteration, stop the loop and record the
+disagreement for the human partner. Do not run reviews back-to-back without
+addressing findings, and do not keep looping for Nits only.
+
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
 
@@ -132,8 +170,8 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Implementation:**
 
-- Invoke the writing-plans skill to create a detailed implementation plan
-- Do NOT invoke any other skill. writing-plans is the next step.
+- Invoke the writing-plans skill to create a detailed implementation plan after
+  the spec review and user review gates pass
 
 ## Key Principles
 

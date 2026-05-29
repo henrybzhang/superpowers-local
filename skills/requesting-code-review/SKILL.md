@@ -5,7 +5,11 @@ description: Use when completing tasks, implementing major features, or before m
 
 # Requesting Code Review
 
-Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history. This keeps the reviewer focused on the work product, not your thought process, and preserves your own context for continued work.
+Dispatch a code review to catch issues before they cascade. Prefer the
+`review-code` skill from `../custom-commands/review-code`; fall back to the
+local reviewer template only when that skill or cross-harness routing is
+unavailable. The reviewer gets precisely crafted context for evaluation, not
+your session history.
 
 **Core principle:** Review early, review often.
 
@@ -29,9 +33,14 @@ BASE_SHA=$(git rev-parse HEAD~1)  # or origin/main
 HEAD_SHA=$(git rev-parse HEAD)
 ```
 
-**2. Dispatch code reviewer subagent:**
+**2. Run `review-code`:**
 
-Use Task tool with `general-purpose` type, fill template at `code-reviewer.md`
+Use the cross-harness command shape from
+`superpowers:subagent-driven-development` when possible. Review target:
+`<BASE_SHA>..<HEAD_SHA>` against `{PLAN_OR_REQUIREMENTS}`.
+
+Fallback: use Task tool with `general-purpose` type and fill template at
+`code-reviewer.md`.
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
@@ -40,10 +49,15 @@ Use Task tool with `general-purpose` type, fill template at `code-reviewer.md`
 - `{HEAD_SHA}` - Ending commit
 
 **3. Act on feedback:**
-- Fix Critical issues immediately
-- Fix Important issues before proceeding
-- Note Minor issues for later
-- Push back if reviewer is wrong (with reasoning)
+- Run at most 6 review/address iterations
+- Each iteration is: run `review-code`, read the returned review, address the
+  review, then re-run `review-code` if needed
+- Stop on `Verdict: Approve` or no Required/Concern improvements
+- Fix valid Required/Concern issues before proceeding
+- If you disagree with all Required/Concern suggestions in an iteration, stop
+  the loop and record the disagreement
+- Do not run reviews back-to-back without addressing findings
+- Nits are optional; do not keep looping for Nits only
 
 ## Example
 

@@ -34,9 +34,32 @@ For each task:
 After all tasks complete and verified:
 - **REQUIRED:** Run the post-implementation checklist:
   1. Run the command `/simplify` to simplify the current changes.
-  2. Run the command `/review` to review the changes in the implementation step.
-  3. Fix the issues found by the above step.
+  2. Run a read-only cross-harness review of the completed implementation.
+     Use `review-code current implementation against <plan-file>`.
+     - If running in Codex, use OpenCode with DeepSeek and the default OpenCode agent (do not pass `--agent`):
+       ```bash
+       OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
+       opencode run "Use my skills. Use the review-code skill. Arguments: current implementation against <plan-file>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+       ```
+     - If running in OpenCode, ask it to run Codex with GPT-5.5 and medium reasoning effort in read-only mode:
+       ```text
+       Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the review-code skill. Arguments: current implementation against <plan-file>"`?
+       ```
+     - If the opposite harness or target model is unavailable, fall back to `/review` and note the fallback.
+  3. Run the review loop at most 6 review/address iterations. Each iteration is:
+     run the review command, read the returned review, address the review, then
+     re-run the review command if needed. Stop on `Verdict: Approve` or no
+     Required/Concern improvements; otherwise fix valid Required/Concern
+     feedback and explain rejected feedback before the next review. If the base
+     implementer disagrees with all Required/Concern suggestions in an
+     iteration, stop the loop and record the disagreement. Do not run reviews
+     back-to-back without addressing findings, and do not keep looping for Nits
+     only.
   4. Output a commit message for the implemented changes.
+
+The reviewer must not edit files, run lint, run tests, install dependencies, or
+perform cleanup. Code ready for review must already have been linted/tested by
+the implementer according to the plan's verification steps.
 
 ### Step 4: Complete Development
 

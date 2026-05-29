@@ -86,6 +86,52 @@ digraph process {
 }
 ```
 
+## Cross-Harness Review Routing
+
+For every review checkpoint in this skill (spec compliance, code quality,
+re-review, and final review), prefer a read-only reviewer running on the
+opposite harness instead of a same-harness reviewer subagent.
+
+Use the review skills from `../custom-commands` for the work product:
+- **Implementation/code review:** `review-code <base-ref>..HEAD against <plan-file>; focus: <spec compliance|code quality|final review>`
+- **Plan review, if needed:** `review-plan <plan-file> <spec-file>`
+- **Spec review, if needed:** `review-spec <spec-file>`
+
+**If running in Codex:** use OpenCode with DeepSeek, using OpenCode's default
+agent. Do not pass `--agent`. Run this command outside the Codex sandbox.
+
+```bash
+OPENCODE_PERMISSION='{"edit":"deny","task":"deny","bash":{"*":"deny","git diff*":"allow","git log*":"allow","git status*":"allow","git show*":"allow","rg *":"allow","grep *":"allow","sed *":"allow"}}' \
+opencode run "Use my skills. Use the <review-skill> skill. Arguments: <arguments>. Return only the review." --model deepseek/deepseek-v4-flash --variant high --dir <repo>
+```
+
+**If running in OpenCode:** ask it to run Codex with GPT-5.5 and medium
+reasoning effort in read-only mode.
+
+```text
+Can you run `codex exec --model gpt-5.5 -c model_reasoning_effort="medium" -a never --sandbox read-only -C <repo> "Use the <review-skill> skill. Arguments: <arguments>"`?
+```
+
+The reviewer is advisory. The controller decides whether each comment is valid,
+explains any rejected feedback, and sends only valid fixes back to the
+implementer. Reviewers must not edit files, run lint, run tests, install
+dependencies, or perform cleanup. The implementer must already have run the
+task's required verification before review starts.
+
+**Review loop:** Run at most 6 review/address iterations for each checkpoint.
+Each iteration is: run the review command, read the returned review, address the
+review, then re-run the review command if needed. Stop when the review skill
+returns `Verdict: Approve` or otherwise says no Required/Concern improvements
+remain. If it returns `Verdict: Revise`, the base implementer decides whether
+each Required/Concern suggestion is valid. Apply valid feedback and explain
+rejected feedback briefly before the next review. If the base implementer
+disagrees with all Required/Concern suggestions in an iteration, stop the loop
+and record the disagreement for the human partner. Do not run reviews
+back-to-back without addressing findings, and do not keep looping for Nits only.
+
+If the opposite harness or target model is unavailable, fall back to the normal
+same-harness reviewer subagent and note the fallback in the task report.
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
@@ -95,6 +141,9 @@ Use the least powerful model that can handle each role to conserve cost and incr
 **Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
 
 **Architecture, design, and review tasks**: use the most capable available model.
+
+Cross-harness review routing overrides the normal model choice for reviewer
+roles.
 
 **Task complexity signals:**
 - Touches 1-2 files with a complete spec → cheap model
