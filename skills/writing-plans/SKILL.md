@@ -227,14 +227,14 @@ The reviewer may run targeted, non-destructive checks as allowed by the review
 skill. It must not edit files, install dependencies, update snapshots,
 regenerate committed artifacts, run migrations against real services, start
 long-lived processes, or perform cleanup. If the opposite harness or target
-model is unavailable, run the review in the current harness and note the
-fallback before offering execution.
+model is unavailable, use `review-plan` in the current harness/model and note
+the fallback before offering execution.
 
 **Review loop:** Follow `workflow-policy` for interactive sessions:
-`review-plan`, at most 3 review/address iterations, stop on `Verdict: Approve`
-or when no accepted Required/Concern improvements remain. Apply valid feedback,
-explain rejected feedback briefly, never run reviews back-to-back without
-addressing findings, and do not keep looping for Nits only.
+`review-plan`, using the applicable review/address iteration cap, stop on
+`Verdict: Approve` or when no accepted Required/Concern improvements remain.
+Apply valid feedback, explain rejected feedback briefly, never run reviews
+back-to-back without addressing findings, and do not keep looping for Nits only.
 
 ## Execution Handoff
 

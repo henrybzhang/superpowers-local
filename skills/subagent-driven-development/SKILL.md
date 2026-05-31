@@ -121,13 +121,14 @@ start long-lived processes, or perform cleanup. The implementer must already
 have run the task's required verification before review starts.
 
 **Final review loop:** Follow `workflow-policy` for interactive implementation
-sessions: `review-code`, at most 3 review/address iterations, stop on
-`Verdict: Approve` or when no accepted Required/Concern improvements remain.
-Apply valid feedback, explain rejected feedback briefly, never run reviews
-back-to-back without addressing findings, and do not keep looping for Nits only.
+sessions: `review-code`, using the applicable review/address iteration cap,
+stop on `Verdict: Approve` or when no accepted Required/Concern improvements
+remain. Apply valid feedback, explain rejected feedback briefly, never run
+reviews back-to-back without addressing findings, and do not keep looping for
+Nits only.
 
-If the opposite harness or target model is unavailable, fall back to a same-
-harness `review-code` invocation and note the fallback in the task report.
+If the opposite harness or target model is unavailable, use `review-code` in
+the current harness/model and note the fallback in the task report.
 
 ## Model Selection
 

@@ -7,7 +7,9 @@ description: Use when you have a written implementation plan to execute in a sep
 
 ## Overview
 
-Load plan, review critically, execute all tasks, report when complete.
+Load plan, review critically, execute all plan tasks, run mandatory
+post-implementation gates, then complete the branch workflow. Work is not
+complete until Step 4 finishes.
 
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
@@ -15,11 +17,33 @@ Load plan, review critically, execute all tasks, report when complete.
 
 ## The Process
 
+## Definition of Complete
+
+You are NOT done when implementation tasks pass.
+
+You are done only after:
+1. All plan tasks are completed and verified
+2. The post-implementation checklist has completed, or a required
+   fallback/blocker has been reported
+3. superpowers:finishing-a-development-branch has run
+
+If any post-implementation command cannot run, do not skip it silently. State
+the exact blocker, use the documented fallback if available, and continue only
+if the fallback satisfies the checklist.
+
 ### Step 1: Load and Review Plan
 1. Read plan file
 2. Review critically - identify any questions or concerns about the plan
 3. If concerns: Raise them with your human partner before starting
 4. If no concerns: Create TodoWrite and proceed
+
+TodoWrite MUST include:
+- Each plan task
+- Run `/simplify`
+- Run cross-harness `review-code`
+- Adjudicate and revise accepted Required/Concern findings
+- Output commit message
+- Run superpowers:finishing-a-development-branch
 
 ### Step 2: Execute Tasks
 
@@ -44,14 +68,18 @@ After all tasks complete and verified:
        ```bash
        codex-review-code current implementation against <plan-file>
        ```
-     - If the opposite harness or target model is unavailable, fall back to `/review` and note the fallback.
+     - If the opposite harness or target model is unavailable, use
+       `review-code` in the current harness/model and note the fallback.
   3. Follow `workflow-policy` for interactive implementation sessions:
-     `review-code`, at most 3 review/address iterations, stop on
+     `review-code`, using the applicable review/address iteration cap, stop on
      `Verdict: Approve` or when no accepted Required/Concern improvements
      remain. Apply valid feedback, explain rejected feedback briefly, never run
      reviews back-to-back without addressing findings, and do not keep looping
      for Nits only.
   4. Output a commit message for the implemented changes.
+
+Outputting the commit message is not the final response. Immediately continue
+to Step 4 unless blocked.
 
 The reviewer may run targeted, non-destructive checks as allowed by
 `review-code`. It must not edit files, install dependencies, update snapshots,
