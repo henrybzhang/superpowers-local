@@ -62,6 +62,7 @@ digraph process {
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
+    "Verify full implementation" [shape=box];
     "Run final review-code for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
@@ -81,7 +82,8 @@ digraph process {
     "Code quality reviewer approves?" -> "Mark task complete in TodoWrite" [label="yes"];
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Run final review-code for entire implementation" [label="no"];
+    "More tasks remain?" -> "Verify full implementation" [label="no"];
+    "Verify full implementation" -> "Run final review-code for entire implementation";
     "Run final review-code for entire implementation" -> "Use superpowers:finishing-a-development-branch";
 }
 ```
@@ -98,34 +100,37 @@ Do not use `review-code`, `review-plan`, or `review-spec` for every task. Those
 review skills are full-artifact reviews and are too heavy for per-task gates.
 
 After all tasks are complete, run one full read-only implementation review with
-the `review-code` skill from `../custom-commands/review-code`.
+the `review-code` skill from `../custom-commands/review-code`. Before starting
+that review, the controller must verify the full implementation or record the
+exact verification blocker and pass only the current evidence/blocker summary to
+the reviewer.
 
 **If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
 
 ```bash
-opencode-review-code current implementation against <plan-file>
+opencode-review-code <target> [against <plan-or-requirements>]
 ```
 
 **If running in OpenCode:** run the Codex wrapper.
 
 ```bash
-codex-review-code current implementation against <plan-file>
+codex-review-code <target> [against <plan-or-requirements>]
 ```
 
 The reviewer is advisory. The controller decides whether each comment is valid,
 explains any rejected feedback, and sends only valid fixes back to the
-implementer. Reviewers may run targeted, non-destructive checks as allowed by
-the review skill. They must not edit files, install dependencies, update
-snapshots, regenerate committed artifacts, run migrations against real services,
-start long-lived processes, or perform cleanup. The implementer must already
-have run the task's required verification before review starts.
+implementer. review-code is evidence-only; it inspects existing evidence and is
+not responsible for running deterministic checks. It must not run lint,
+typecheck, build, tests, coverage, snapshots, generated artifacts, services,
+migrations, or cleanup. The implementer must already have run the task's
+required verification before review starts, and the controller must run or
+record full implementation verification before final review.
 
 **Final review loop:** Follow `workflow-policy` for interactive implementation
 sessions: `review-code`, using the applicable review/address iteration cap,
-stop on `Verdict: Approve` or when no accepted Required/Concern improvements
-remain. Apply valid feedback, explain rejected feedback briefly, never run
-reviews back-to-back without addressing findings, and do not keep looping for
-Nits only.
+stop on `Verdict: Approve` or when no accepted improvements remain. Adjudicate
+all findings, including accepted Nit and low-level findings. Apply valid
+feedback, explain rejected feedback briefly, run verification after accepted fixes, and never run reviews back-to-back without addressing accepted findings.
 
 If the opposite harness or target model is unavailable, use `review-code` in
 the current harness/model and note the fallback in the task report.

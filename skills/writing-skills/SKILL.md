@@ -9,7 +9,7 @@ description: Use when creating new skills, editing existing skills, or verifying
 
 **Writing skills IS Test-Driven Development applied to process documentation.**
 
-**Personal skills live in agent-specific directories (`~/.claude/skills` for Claude Code, `~/.agents/skills/` for Codex)** 
+**Where your skills live:** Custom skills you want available everywhere go in the `ai-plugins` repo — `command-skills/<name>/SKILL.md` if the skill is invoked as a command and should get a `/name` slash command, or `reference-skills/<name>/SKILL.md` if it is passive policy that auto-applies with no slash command. Run `bash setup.sh` after adding, removing, or renaming a skill to install it across harnesses. The exception is a skill scoped to a single other repo — your human partner will say so, and that skill lives in that repo instead.
 
 You write test cases (pressure scenarios with subagents), watch them fail (baseline behavior), write the skill (documentation), watch tests pass (agents comply), and refactor (close loopholes).
 
@@ -55,7 +55,7 @@ The entire skill creation process follows RED-GREEN-REFACTOR.
 **Don't create for:**
 - One-off solutions
 - Standard practices well-documented elsewhere
-- Project-specific conventions (put in CLAUDE.md)
+- Project-specific conventions
 - Mechanical constraints (if it's enforceable with regex/validation, automate it—save documentation for judgment calls)
 
 ## Skill Types
@@ -100,6 +100,7 @@ skills/
   - Start with "Use when..." to focus on triggering conditions
   - Include specific symptoms, situations, and contexts
   - **NEVER summarize the skill's process or workflow** (see CSO section for why)
+  - **Never use a colon (`:`) in the description** — a bare colon can break YAML frontmatter parsing. Rephrase to avoid it (use a dash, comma, or reword).
   - Keep under 500 characters if possible
 
 ```markdown
@@ -607,6 +608,7 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] YAML frontmatter with required `name` and `description` fields (max 1024 chars; see [spec](https://agentskills.io/specification))
 - [ ] Description starts with "Use when..." and includes specific triggers/symptoms
 - [ ] Description written in third person
+- [ ] Description contains no colon (`:`) — avoids YAML frontmatter parsing issues
 - [ ] Keywords throughout for search (errors, symptoms, tools)
 - [ ] Clear overview with core principle
 - [ ] Address specific baseline failures identified in RED
@@ -629,8 +631,9 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] Supporting files only for tools or heavy reference
 
 **Deployment:**
-- [ ] Commit skill to git and push to your fork (if configured)
-- [ ] Consider contributing back via PR (if broadly useful)
+- [ ] Skill lives under `command-skills/` (invocable + slash command) or `reference-skills/` (passive policy) in the `ai-plugins` repo — unless your human partner scoped it to a single other repo
+- [ ] Run `bash setup.sh` to install it across harnesses (after adding, removing, or renaming)
+- [ ] Commit the skill to the `ai-plugins` repo
 
 ## Discovery Workflow
 

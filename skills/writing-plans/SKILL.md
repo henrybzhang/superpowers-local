@@ -223,18 +223,20 @@ opencode-review-plan <plan-file> <spec-file>
 codex-review-plan <plan-file> <spec-file>
 ```
 
-The reviewer may run targeted, non-destructive checks as allowed by the review
-skill. It must not edit files, install dependencies, update snapshots,
-regenerate committed artifacts, run migrations against real services, start
-long-lived processes, or perform cleanup. If the opposite harness or target
-model is unavailable, use `review-plan` in the current harness/model and note
-the fallback before offering execution.
+The reviewer may run targeted, non-destructive diagnostics as allowed by the
+review skill. Diagnostics may create untracked cache, coverage, or temp files,
+and the reviewer must report those artifacts. The reviewer must not edit tracked files, install dependencies, update snapshots, regenerate committed artifacts,
+run migrations against real services, start long-lived processes, or perform
+cleanup. If the opposite harness or target model is unavailable, use
+`review-plan` in the current harness/model and note the fallback before offering
+execution.
 
 **Review loop:** Follow `workflow-policy` for interactive sessions:
 `review-plan`, using the applicable review/address iteration cap, stop on
-`Verdict: Approve` or when no accepted Required/Concern improvements remain.
-Apply valid feedback, explain rejected feedback briefly, never run reviews
-back-to-back without addressing findings, and do not keep looping for Nits only.
+`Verdict: Approve` or when no accepted improvements remain. Apply valid
+feedback, including Nits and low-level findings, explain rejected feedback
+briefly, and never run reviews back-to-back without addressing accepted
+findings.
 
 ## Execution Handoff
 
