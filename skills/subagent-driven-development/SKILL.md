@@ -11,6 +11,9 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 
 **Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
 
+**Narration:** between tool calls, narrate at most one short line — the
+ledger and the tool results carry the record.
+
 **Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
 ## When to Use
@@ -88,6 +91,20 @@ digraph process {
 }
 ```
 
+## Pre-Flight Plan Review
+
+Before dispatching Task 1, scan the plan once for conflicts:
+
+- tasks that contradict each other or the plan's Global Constraints
+- anything the plan explicitly mandates that the review rubric treats as a
+  defect (a test that asserts nothing, verbatim duplication of a logic block)
+
+Present everything you find to your human partner as one batched question —
+each finding beside the plan text that mandates it, asking which governs —
+before execution begins, not one interrupt per discovery mid-plan. If the
+scan is clean, proceed without comment. The review loop remains the net for
+conflicts that only emerge from implementation.
+
 ## Review Routing
 
 Per-task review checkpoints are intentionally targeted and run through the local
@@ -100,7 +117,7 @@ Do not use `review-code`, `review-plan`, or `review-spec` for every task. Those
 review skills are full-artifact reviews and are too heavy for per-task gates.
 
 After all tasks are complete, run one full read-only implementation review with
-the `review-code` skill from `../custom-commands/review-code`. Before starting
+the `review-code` skill. Before starting
 that review, the controller must verify the full implementation or record the
 exact verification blocker and pass only the current evidence/blocker summary to
 the reviewer.
@@ -148,6 +165,18 @@ Use the least powerful model that can handle each role to conserve cost and incr
 Cross-harness review routing overrides the normal model choice for reviewer
 roles.
 
+**Always specify the model explicitly when dispatching a subagent.** An
+omitted model inherits your session's model — often the most capable and
+most expensive — which silently defeats this section.
+
+**Turn count beats token price.** Wall-clock and context cost scale with how
+many turns a subagent takes, and the cheapest models routinely take 2-3× the
+turns on multi-step work — costing more overall. Use a mid-tier model as the
+floor for implementers working from prose descriptions. When the task's plan
+text contains the complete code to write, the implementation is transcription
+plus testing: use the cheapest tier for that implementer. Single-file
+mechanical fixes also take the cheapest tier.
+
 **Task complexity signals:**
 - Touches 1-2 files with a complete spec → cheap model
 - Touches multiple files with integration concerns → standard model
@@ -170,6 +199,26 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 4. If the plan itself is wrong, escalate to the human
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
+
+## Durable Progress
+
+Conversation memory does not survive compaction. In real sessions, controllers
+that lost their place have re-dispatched entire completed task sequences — the
+single most expensive failure observed. Track progress in a ledger file, not
+only in todos.
+
+- At skill start, check for a ledger:
+  `cat "$(git rev-parse --show-toplevel)/.superpowers/sdd/progress.md"`. Tasks
+  listed there as complete are DONE — do not re-dispatch them; resume at the
+  first task not marked complete.
+- When a task's review comes back clean, append one line to the ledger in the
+  same message as your other bookkeeping:
+  `Task N: complete (commits <base7>..<head7>, review clean)`.
+- The ledger is your recovery map: the commits it names exist in git even when
+  your context no longer remembers creating them. After compaction, trust the
+  ledger and `git log` over your own recollection.
+- `git clean -fdx` will destroy the ledger (it's git-ignored scratch); if that
+  happens, recover from `git log`.
 
 ## Prompt Templates
 
@@ -320,8 +369,8 @@ Done!
 
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
-- **superpowers:writing-plans** - Creates the plan this skill executes
-- **review-code** from `../custom-commands/review-code` - Read-only implementation review
+- **writing-plans** - Creates the plan this skill executes
+- **review-code** - Read-only implementation review (cross-harness)
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**

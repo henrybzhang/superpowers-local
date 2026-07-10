@@ -46,8 +46,7 @@ WORKTREE_PATH=$(git rev-parse --show-toplevel)
 ```
 
 - **Ours to integrate** — on a named `branch` **and** the workspace is one we can clean up: a normal
-  repo (`GIT_DIR == GIT_COMMON`) or a worktree under `.worktrees/`, `worktrees/`, or
-  `~/.config/superpowers/worktrees/`.
+  repo (`GIT_DIR == GIT_COMMON`) or a worktree under `.worktrees/` or `worktrees/`.
 - **Hand-off** — anything else: a detached HEAD (empty `branch`), or a worktree the harness owns (any
   other path). This skill does **not** integrate or clean up a hand-off workspace — the harness owns
   its lifecycle.
