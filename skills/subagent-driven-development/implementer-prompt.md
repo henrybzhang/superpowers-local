@@ -1,9 +1,13 @@
 # Implementer Subagent Prompt Template
 
-Use this template when dispatching an implementer subagent.
+Use this template when dispatching an implementer subagent. Dispatch it via
+the route resolved in Model Selection: the harness subagent tool (Agent/Task,
+general-purpose) with the resolved model for a native route, or
+`opencode run --dir <worktree>` carrying the same prompt for a cheap/bulk
+route.
 
 ```
-Task tool (general-purpose):
+[Resolved route — e.g. Task tool (general-purpose) + resolved model, or opencode run --dir <worktree>]:
   description: "Implement Task N: [task name]"
   prompt: |
     You are implementing Task N: [task name]

@@ -69,6 +69,7 @@ digraph process {
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Verify full implementation" [shape=box];
+    "Simplify, re-verify, self-check diff (workflow-policy implementation loop)" [shape=box];
     "Run final review-code loop for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
@@ -86,7 +87,8 @@ digraph process {
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Verify full implementation" [label="no"];
-    "Verify full implementation" -> "Run final review-code loop for entire implementation";
+    "Verify full implementation" -> "Simplify, re-verify, self-check diff (workflow-policy implementation loop)";
+    "Simplify, re-verify, self-check diff (workflow-policy implementation loop)" -> "Run final review-code loop for entire implementation";
     "Run final review-code loop for entire implementation" -> "Use superpowers:finishing-a-development-branch";
 }
 ```
@@ -132,7 +134,10 @@ review skills are full-artifact reviews and are too heavy for per-task gates.
 implementation review with the `review-code` skill. Before starting
 that review, the controller must verify the full implementation or record the
 exact verification blocker and pass only the current evidence/blocker summary to
-the reviewer.
+the reviewer. Between verification and that review, run `workflow-policy`'s
+remaining Implementation Loop gates: simplify the changes, re-verify when
+practical, and self-check the diff — findings pre-empted there avoid a full
+Revise round.
 
 **If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
 
@@ -241,6 +246,10 @@ only in todos.
   (`mkdir -p "$(git rev-parse --show-toplevel)/.superpowers/sdd"`). Tasks
   listed there as complete are DONE — do not re-dispatch them; resume at the
   first task not marked complete.
+- Also at skill start, make sure the ledger stays out of `git status` — the
+  per-task clean-worktree gate depends on it. Ensure the repo-local
+  (uncommitted) exclude covers it; one append covers every worktree:
+  `f="$(git rev-parse --git-common-dir)/info/exclude"; grep -qxF '.superpowers/' "$f" 2>/dev/null || echo '.superpowers/' >> "$f"`
 - When a task's spec check passes, append one line to the ledger in the
   same message as your other bookkeeping:
   `Task N: complete (commits <base7>..<head7>, spec check clean)`.
@@ -252,7 +261,8 @@ only in todos.
 
 ## Prompt Templates
 
-- `./implementer-prompt.md` - Dispatch implementer subagent
+- `./implementer-prompt.md` - Dispatch implementer subagent (fill its dispatch
+  header with the route resolved in Model Selection)
 
 ## Example Workflow
 
@@ -316,6 +326,7 @@ Implementer: Removed --json flag, added progress reporting
 
 [After all tasks]
 [Verify full implementation]
+[Simplify, re-verify, self-check diff]
 [Run final review-code loop]
 Final reviewer: Issues (Important): Magic number (100) in progress reporting
 
