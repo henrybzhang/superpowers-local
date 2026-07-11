@@ -176,33 +176,38 @@ note the implementer and reviewer routes for the session. The resolved policy
 is authoritative; the tier guidance below applies only where the policy is
 silent or absent.
 
-Use the least powerful model that can handle each role to conserve cost and increase speed.
+Use the least powerful tier that can handle each role to conserve cost and
+increase speed. A tier is a route, not necessarily a native subagent: where a
+policy routes cheap tiers to another harness, following this guidance never
+means dispatching a native subagent on a cheap model.
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): route to the cheap tier. Most implementation tasks are mechanical when the plan is well-specified.
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): route to the standard tier.
 
-**Architecture, design, and review tasks**: use the most capable available model.
+**Architecture, design, and review tasks**: use the most capable available tier.
 
-Cross-harness review routing overrides the normal model choice for reviewer
+Cross-harness review routing overrides the normal tier choice for reviewer
 roles.
 
-**Always specify the model explicitly when dispatching a subagent.** An
-omitted model inherits your session's model — often the most capable and
-most expensive — which silently defeats this section.
+**Make the tier choice explicit before every dispatch.** An unconsidered
+dispatch inherits your session's model — often the most capable and most
+expensive — which silently defeats this section. Explicit means naming the
+resolved route: the policy's harness for cheap tiers, or a deliberately
+chosen (or deliberately inherited) model for native dispatches.
 
 **Turn count beats token price.** Wall-clock and context cost scale with how
 many turns a subagent takes, and the cheapest models routinely take 2-3× the
-turns on multi-step work — costing more overall. Use a mid-tier model as the
+turns on multi-step work — costing more overall. Use the standard tier as the
 floor for implementers working from prose descriptions. When the task's plan
 text contains the complete code to write, the implementation is transcription
 plus testing: use the cheapest tier for that implementer. Single-file
 mechanical fixes also take the cheapest tier.
 
 **Task complexity signals:**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+- Touches 1-2 files with a complete spec → cheap tier
+- Touches multiple files with integration concerns → standard tier
+- Requires design judgment or broad codebase understanding → most capable tier
 
 ## Handling Implementer Status
 
