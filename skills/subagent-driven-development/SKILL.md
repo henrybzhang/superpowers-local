@@ -5,11 +5,11 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching fresh subagent per task, with two-stage review after each: spec compliance review first, then code quality review.
+Execute plan by dispatching fresh subagent per task; the controller checks each task's diff against its spec, then runs one full code review loop at the end.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task + controller spec check per task + one full review loop at the end = high quality, fast iteration
 
 **Narration:** between tool calls, narrate at most one short line — the
 ledger and the tool results carry the record.
@@ -39,55 +39,55 @@ digraph when_to_use {
 **vs. Executing Plans (parallel session):**
 - Same session (no context switch)
 - Fresh subagent per task (no context pollution)
-- Two-stage review after each task: spec compliance first, then code quality
+- Controller spec check after each task; one full review-code loop at the end
 - Faster iteration (no human-in-loop between tasks)
 
 ## The Process
+
+**Task tracker:** wherever this skill says TodoWrite, use the harness's task
+tracker — TodoWrite in Claude Code, `update_plan` in Codex, or the equivalent;
+when the harness has none, the Durable Progress ledger alone is the tracker.
 
 ```dot
 digraph process {
     rankdir=TB;
 
+    "Ensure isolated workspace (superpowers:using-git-worktrees)" [shape=box];
+
     subgraph cluster_per_task {
         label="Per Task";
-        "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
+        "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
-        "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
-        "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
+        "Controller checks task diff against task text" [shape=box];
+        "Diff matches spec (nothing missing, nothing extra)?" [shape=diamond];
         "Implementer subagent fixes spec gaps" [shape=box];
-        "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
-        "Code quality reviewer approves?" [shape=diamond];
-        "Implementer subagent fixes quality issues" [shape=box];
         "Mark task complete in TodoWrite" [shape=box];
     }
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Verify full implementation" [shape=box];
-    "Run final review-code for entire implementation" [shape=box];
+    "Run final review-code loop for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
+    "Ensure isolated workspace (superpowers:using-git-worktrees)" -> "Read plan, extract all tasks with full text, note context, create TodoWrite";
+    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)";
+    "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
+    "Answer questions, provide context" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)";
     "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
-    "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
-    "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
-    "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
-    "Spec reviewer subagent confirms code matches spec?" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="yes"];
-    "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer approves?";
-    "Code quality reviewer approves?" -> "Implementer subagent fixes quality issues" [label="no"];
-    "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer approves?" -> "Mark task complete in TodoWrite" [label="yes"];
+    "Implementer subagent implements, tests, commits, self-reviews" -> "Controller checks task diff against task text";
+    "Controller checks task diff against task text" -> "Diff matches spec (nothing missing, nothing extra)?";
+    "Diff matches spec (nothing missing, nothing extra)?" -> "Implementer subagent fixes spec gaps" [label="no"];
+    "Implementer subagent fixes spec gaps" -> "Controller checks task diff against task text" [label="re-check"];
+    "Diff matches spec (nothing missing, nothing extra)?" -> "Mark task complete in TodoWrite" [label="yes"];
     "Mark task complete in TodoWrite" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
+    "More tasks remain?" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Verify full implementation" [label="no"];
-    "Verify full implementation" -> "Run final review-code for entire implementation";
-    "Run final review-code for entire implementation" -> "Use superpowers:finishing-a-development-branch";
+    "Verify full implementation" -> "Run final review-code loop for entire implementation";
+    "Run final review-code loop for entire implementation" -> "Use superpowers:finishing-a-development-branch";
 }
 ```
 
@@ -107,17 +107,29 @@ conflicts that only emerge from implementation.
 
 ## Review Routing
 
-Per-task review checkpoints are intentionally targeted and run through the local
-prompt templates:
+**Per task — controller spec check, no reviewer subagent.** After the
+implementer reports DONE, read the task's diff (`git diff <base>..<head>`,
+using the base SHA recorded before dispatch) against the task text: every
+requirement present, tests written as specified, nothing extra built. Do this
+yourself, inline — do not dispatch a reviewer subagent for it, and do not
+judge code quality here. Spec drift compounds: a task that misreads the plan
+becomes the foundation the next tasks build on, so it must be caught while it
+is one task wide. Quality (consolidation, duplication across tasks,
+architectural fit) is a whole-branch property that a single task's diff cannot
+show — it waits for the final review.
 
-- `./spec-reviewer-prompt.md` checks task-level spec compliance.
-- `./code-quality-reviewer-prompt.md` checks task-level implementation quality.
+If the diff doesn't match the task text, send the specific gaps back to the
+implementer and re-check after the fix.
+
+Before marking the task complete, also run `git status --short`: the worktree
+must be clean. Staged or unstaged leftovers are work the spec check never saw —
+send them back to the implementer to commit or drop.
 
 Do not use `review-code`, `review-plan`, or `review-spec` for every task. Those
 review skills are full-artifact reviews and are too heavy for per-task gates.
 
-After all tasks are complete, run one full read-only implementation review with
-the `review-code` skill. Before starting
+**After all tasks — one full review loop.** Run one full read-only
+implementation review with the `review-code` skill. Before starting
 that review, the controller must verify the full implementation or record the
 exact verification blocker and pass only the current evidence/blocker summary to
 the reviewer.
@@ -154,6 +166,16 @@ the current harness/model and note the fallback in the task report.
 
 ## Model Selection
 
+Route model/tier choice through the delegation policy when one exists (the
+`delegation-triage` skill resolves `~/.config/agent-rules/delegation-policy.yaml`):
+it decides which tier — and which harness — handles each kind of work, and it
+routes cheap/bulk implementation through opencode rather than native
+cheap-model subagents (this environment hard-denies `sonnet`/`haiku` native
+dispatch). Resolve routes once, before the first dispatch — read the policy and
+note the implementer and reviewer routes for the session. The resolved policy
+is authoritative; the tier guidance below applies only where the policy is
+silent or absent.
+
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
 **Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
@@ -186,9 +208,9 @@ mechanical fixes also take the cheapest tier.
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Proceed to spec compliance review.
+**DONE:** Proceed to the spec check.
 
-**DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
+**DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before the spec check. If they're observations (e.g., "this file is getting large"), note them and proceed to the spec check.
 
 **NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
 
@@ -208,12 +230,15 @@ single most expensive failure observed. Track progress in a ledger file, not
 only in todos.
 
 - At skill start, check for a ledger:
-  `cat "$(git rev-parse --show-toplevel)/.superpowers/sdd/progress.md"`. Tasks
+  `cat "$(git rev-parse --show-toplevel)/.superpowers/sdd/progress.md"`. A
+  missing ledger is normal — it means no tasks are complete yet; create the
+  directory before the first append
+  (`mkdir -p "$(git rev-parse --show-toplevel)/.superpowers/sdd"`). Tasks
   listed there as complete are DONE — do not re-dispatch them; resume at the
   first task not marked complete.
-- When a task's review comes back clean, append one line to the ledger in the
+- When a task's spec check passes, append one line to the ledger in the
   same message as your other bookkeeping:
-  `Task N: complete (commits <base7>..<head7>, review clean)`.
+  `Task N: complete (commits <base7>..<head7>, spec check clean)`.
 - The ledger is your recovery map: the commits it names exist in git even when
   your context no longer remembers creating them. After compaction, trust the
   ledger and `git log` over your own recollection.
@@ -223,20 +248,20 @@ only in todos.
 ## Prompt Templates
 
 - `./implementer-prompt.md` - Dispatch implementer subagent
-- `./spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
-- `./code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
 
 ## Example Workflow
 
 ```
 You: I'm using Subagent-Driven Development to execute this plan.
 
+[Ensure isolated workspace (worktree)]
 [Read plan file once: PLAN.md]
 [Extract all 5 tasks with full text and context]
-[Create TodoWrite with all tasks]
+[Create task tracker entries for all 5 tasks]
 
 Task 1: Hook installation script
 
+[Record base SHA]
 [Get Task 1 text and context (already extracted)]
 [Dispatch implementation subagent with full task text + context]
 
@@ -251,16 +276,14 @@ Implementer: "Got it. Implementing now..."
   - Self-review: Found I missed --force flag, added it
   - Committed
 
-[Dispatch spec compliance reviewer]
-Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
+[Spec check: git diff <base>..<head> against Task 1 text]
+✅ All requirements present, tests included, nothing extra
 
-[Get git SHAs, dispatch code quality reviewer]
-Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
-
-[Mark Task 1 complete]
+[Mark Task 1 complete, append to ledger]
 
 Task 2: Recovery modes
 
+[Record base SHA]
 [Get Task 2 text and context (already extracted)]
 [Dispatch implementation subagent with full task text + context]
 
@@ -271,33 +294,31 @@ Implementer:
   - Self-review: All good
   - Committed
 
-[Dispatch spec compliance reviewer]
-Spec reviewer: ❌ Issues:
+[Spec check: git diff <base>..<head> against Task 2 text]
+❌ Gaps:
   - Missing: Progress reporting (spec says "report every 100 items")
   - Extra: Added --json flag (not requested)
 
-[Implementer fixes issues]
+[Dispatch implementer to fix the specific gaps]
 Implementer: Removed --json flag, added progress reporting
 
-[Spec reviewer reviews again]
-Spec reviewer: ✅ Spec compliant now
+[Re-check diff]
+✅ Matches spec now
 
-[Dispatch code quality reviewer]
-Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
-
-[Implementer fixes]
-Implementer: Extracted PROGRESS_INTERVAL constant
-
-[Code reviewer reviews again]
-Code reviewer: ✅ Approved
-
-[Mark Task 2 complete]
+[Mark Task 2 complete, append to ledger]
 
 ...
 
 [After all tasks]
-[Run final review-code]
-Final reviewer: All requirements met, ready to merge
+[Verify full implementation]
+[Run final review-code loop]
+Final reviewer: Issues (Important): Magic number (100) in progress reporting
+
+[Dispatch implementer to fix]
+Implementer: Extracted PROGRESS_INTERVAL constant
+
+[Verify, re-run review-code]
+Final reviewer: Verdict: Approve
 
 Done!
 ```
@@ -323,43 +344,42 @@ Done!
 
 **Quality gates:**
 - Self-review catches issues before handoff
-- Two-stage review: spec compliance, then code quality
-- Review loops ensure fixes actually work
-- Spec compliance prevents over/under-building
-- Code quality ensures implementation is well-built
+- Per-task spec check stops drift before dependent tasks build on it
+- Spec check prevents over/under-building
+- Final review-code loop judges quality where it's visible: across the whole branch
+- Re-checks and re-reviews ensure fixes actually land
 
 **Cost:**
-- More subagent invocations (implementer + 2 reviewers per task)
-- Controller does more prep work (extracting all tasks upfront)
-- Review loops add iterations
-- But catches issues early (cheaper than debugging later)
+- One implementer subagent per task, plus fix dispatches
+- Controller does more prep work (extracting all tasks upfront, checking each diff)
+- Final review loop adds iterations
+- But catches spec drift early (cheaper than unwinding dependent tasks)
 
 ## Red Flags
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
+- Skip the per-task spec check or the final review-code loop
 - Proceed with unfixed issues
 - Dispatch multiple implementation subagents in parallel (conflicts)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
-- Accept "close enough" on spec compliance (spec reviewer found issues = not done)
-- Skip review loops (reviewer found issues = implementer fixes = review again)
-- Let implementer self-review replace actual review (both are needed)
-- **Start code quality review before spec compliance is ✅** (wrong order)
-- Move to next task while either review has open issues
+- Accept "close enough" on the spec check (gaps found = not done)
+- **Defer spec gaps to the final review** (they compound across dependent tasks — fix them per task)
+- Let implementer self-review replace the spec check or the final review (all are needed)
+- Move to next task while the spec check has open gaps
 
 **If subagent asks questions:**
 - Answer clearly and completely
 - Provide additional context if needed
 - Don't rush them into implementation
 
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
+**If the spec check or final review finds issues:**
+- Implementer subagent fixes them
+- Re-check the diff (or re-run the review)
+- Repeat until clean
+- Don't skip the re-check
 
 **If subagent fails task:**
 - Dispatch fix subagent with specific instructions
@@ -371,6 +391,8 @@ Done!
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **writing-plans** - Creates the plan this skill executes
 - **review-code** - Read-only implementation review (cross-harness)
+- **workflow-policy** - Review-loop iteration caps and controller boundaries
+- **delegation-triage** - Resolves the delegation policy for model/harness routing
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**
