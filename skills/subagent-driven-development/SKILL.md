@@ -239,13 +239,18 @@ that lost their place have re-dispatched entire completed task sequences — the
 single most expensive failure observed. Track progress in a ledger file, not
 only in todos.
 
-- At skill start, check for a ledger:
-  `cat "$(git rev-parse --show-toplevel)/.superpowers/sdd/progress.md"`. A
+- At skill start, resolve the ledger against the **primary checkout**, not the
+  current worktree:
+  `SP_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"`.
+  `--show-toplevel` returns whichever worktree you happen to be in, so a run
+  inside `./.worktrees/<branch>` would write a ledger that dies with the
+  worktree and is invisible from everywhere else — re-dispatching every
+  completed task, which is the failure this ledger exists to prevent.
+- Then check for a ledger: `cat "$SP_ROOT/.superpowers/sdd/progress.md"`. A
   missing ledger is normal — it means no tasks are complete yet; create the
-  directory before the first append
-  (`mkdir -p "$(git rev-parse --show-toplevel)/.superpowers/sdd"`). Tasks
-  listed there as complete are DONE — do not re-dispatch them; resume at the
-  first task not marked complete.
+  directory before the first append (`mkdir -p "$SP_ROOT/.superpowers/sdd"`).
+  Tasks listed there as complete are DONE — do not re-dispatch them; resume at
+  the first task not marked complete.
 - Also at skill start, make sure the ledger stays out of `git status` — the
   per-task clean-worktree gate depends on it. Ensure the repo-local
   (uncommitted) exclude covers it; one append covers every worktree:
