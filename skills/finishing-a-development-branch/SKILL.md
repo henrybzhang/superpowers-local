@@ -59,7 +59,14 @@ WORKTREE_PATH=$(git rev-parse --show-toplevel)
 ### Step 3: Determine Base Branch
 
 Resolve the base **branch name** (`main` or `master`) — not a commit — because the menu and
-`squash-merge` both take the literal name:
+`squash-merge` both take the literal name.
+
+**A caller may supply it.** When the invoking controller already holds the answer — `dev-flow`
+records the user's choice as `campaign.base` when the campaign starts — use that name and skip the
+resolution below. The user picked it once; asking again at closeout re-opens a settled decision and
+stalls an unattended run. Still confirm the branch exists locally, and stop if it does not.
+
+Otherwise resolve it here:
 
 ```bash
 git show-ref --verify --quiet refs/heads/main   && has_main=1
