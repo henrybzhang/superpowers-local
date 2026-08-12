@@ -69,16 +69,12 @@ After all tasks complete and verified:
      `review-code <target> [against <plan-or-requirements>]`; for the common
      plan-backed case, use `review-code current implementation against
      <plan-file>`.
-     - If running in Codex, run the OpenCode wrapper outside the Codex sandbox:
-       ```bash
-       opencode-review-code <target> [against <plan-or-requirements>]
-       ```
-     - If running in OpenCode, run the Codex wrapper:
-       ```bash
-       codex-review-code <target> [against <plan-or-requirements>]
-       ```
-     - If the opposite harness or target model is unavailable, use
-       `review-code` in the current harness/model and note the fallback.
+     - Resolve the reviewer with `model-route reviewer unknown` (or the exact
+       author model when provenance is tracked), then invoke that route's
+       matching `*-review-code` wrapper with `--policy-route`. There is no
+       same-harness, automatic alternate-harness, or built-in-model fallback —
+       a missing wrapper or unavailable model stops with `needs-user` rather
+       than reviewing in the current harness and noting a fallback.
   4. Follow `workflow-policy` for interactive implementation sessions:
      `review-code`, using the applicable review/address iteration cap, stop on
      `Verdict: Approve` or when no accepted improvements remain. Adjudicate all

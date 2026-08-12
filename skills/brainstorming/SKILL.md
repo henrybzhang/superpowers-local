@@ -10,12 +10,12 @@ Help turn ideas into fully formed designs and specs through natural collaborativ
 Start by understanding the current project context, then ask all your clarifying questions together in a single message to refine the idea. Once you understand what you're building, present the design and get user approval.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to every project regardless of perceived simplicity, unless an already-applicable, higher-precedence workflow-sizing rule (a repo or user convention that exempts small work by name) classified it below this gate's threshold before this skill was invoked.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Every project goes through this process, absent that kind of prior, higher-precedence exemption. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work, and deciding for yourself in the moment that a project is too simple is that same unexamined assumption — the exemption has to come from a rule that outranks this skill, not from this skill's own reader. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
 
 ## Checklist
 
@@ -127,25 +127,18 @@ Fix any issues inline. No need to re-review — just fix and move on.
 After self-review passes, run a read-only external spec review with the
 `review-spec` skill.
 
-**If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
-
-```bash
-opencode-review-spec <spec-file>
-```
-
-**If running in OpenCode:** run the Codex wrapper.
-
-```bash
-codex-review-spec <spec-file>
-```
+Resolve the reviewer with `model-route reviewer unknown` (or the exact author
+model when provenance is tracked), then invoke that route's matching
+`*-review-spec` wrapper with `--policy-route <spec-file>`. There is no
+same-harness, automatic alternate-harness, or built-in-model fallback — a
+missing wrapper or unavailable model stops with `needs-user` rather than
+reviewing in the current harness and noting a fallback.
 
 The reviewer may run targeted, non-destructive diagnostics as allowed by the
 review skill. Diagnostics may create untracked cache, coverage, or temp files,
 and the reviewer must report those artifacts. The reviewer must not edit tracked files, install dependencies, update snapshots, regenerate committed artifacts,
 run migrations against real services, start long-lived processes, or perform
-cleanup. If the opposite harness or target model is unavailable, use
-`review-spec` in the current harness/model and note the fallback before user
-review.
+cleanup.
 
 **Review loop:** Follow `workflow-policy` for interactive sessions:
 `review-spec`, using the applicable review/address iteration cap, stop on
