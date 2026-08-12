@@ -246,15 +246,17 @@ only in todos.
   inside `./.worktrees/<branch>` would write a ledger that dies with the
   worktree and is invisible from everywhere else — re-dispatching every
   completed task, which is the failure this ledger exists to prevent.
-- Then check for a ledger: `cat "$SP_ROOT/.superpowers/sdd/progress.md"`. A
-  missing ledger is normal — it means no tasks are complete yet; create the
-  directory before the first append (`mkdir -p "$SP_ROOT/.superpowers/sdd"`).
-  Tasks listed there as complete are DONE — do not re-dispatch them; resume at
-  the first task not marked complete.
+- Then check for a ledger:
+  `cat "$SP_ROOT/tmp/subagent-driven-development/progress.md"`. A missing
+  ledger is normal — it means no tasks are complete yet; create the directory
+  before the first append
+  (`mkdir -p "$SP_ROOT/tmp/subagent-driven-development"`). Tasks listed there
+  as complete are DONE — do not re-dispatch them; resume at the first task not
+  marked complete.
 - Also at skill start, make sure the ledger stays out of `git status` — the
   per-task clean-worktree gate depends on it. Ensure the repo-local
   (uncommitted) exclude covers it; one append covers every worktree:
-  `f="$(git rev-parse --git-common-dir)/info/exclude"; grep -qxF '.superpowers/' "$f" 2>/dev/null || echo '.superpowers/' >> "$f"`
+  `f="$(git rev-parse --git-common-dir)/info/exclude"; grep -qxF 'tmp/subagent-driven-development/' "$f" 2>/dev/null || echo 'tmp/subagent-driven-development/' >> "$f"`
 - When a task's spec check passes, append one line to the ledger in the
   same message as your other bookkeeping:
   `Task N: complete (commits <base7>..<head7>, spec check clean)`.
