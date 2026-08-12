@@ -139,17 +139,12 @@ remaining Implementation Loop gates: simplify the changes, re-verify when
 practical, and self-check the diff — findings pre-empted there avoid a full
 Revise round.
 
-**If running in Codex:** run the OpenCode wrapper outside the Codex sandbox.
-
-```bash
-opencode-review-code <target> [against <plan-or-requirements>]
-```
-
-**If running in OpenCode:** run the Codex wrapper.
-
-```bash
-codex-review-code <target> [against <plan-or-requirements>]
-```
+Resolve the reviewer with `model-route reviewer unknown` (or the exact author
+model when provenance is tracked), then invoke that route's matching
+`*-review-code` wrapper with `--policy-route`. There is no same-harness,
+automatic alternate-harness, or built-in-model fallback — a missing wrapper or
+unavailable model stops with `needs-user` rather than reviewing in the current
+harness and noting a fallback.
 
 The reviewer is advisory. The controller decides whether each comment is valid,
 explains any rejected feedback, and sends only valid fixes back to the
@@ -165,9 +160,6 @@ sessions: `review-code`, using the applicable review/address iteration cap,
 stop on `Verdict: Approve` or when no accepted improvements remain. Adjudicate
 all findings, including accepted Nit and low-level findings. Apply valid
 feedback, explain rejected feedback briefly, run verification after accepted fixes, and never run reviews back-to-back without addressing accepted findings.
-
-If the opposite harness or target model is unavailable, use `review-code` in
-the current harness/model and note the fallback in the task report.
 
 ## Model Selection
 
