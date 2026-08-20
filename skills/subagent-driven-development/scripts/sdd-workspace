@@ -3,12 +3,13 @@
 # its ledger and task briefs. Rooted at the primary checkout, not the current
 # worktree, so it survives worktree removal and stays visible from every
 # sibling worktree. Keyed by the plan file's path relative to the primary
-# checkout plus a full SHA-256 hash of that path, so two differently-pathed
-# plans get distinct workspaces — the path alone isn't collision-proof, since
-# replacing `/` with `-` isn't injective (e.g. `plans/foo-bar.md` and
-# `plans/foo/bar.md` would otherwise both map to `plans-foo-bar`), and a
-# truncated hash would only make a collision unlikely rather than ruling it
-# out. Prints the directory's absolute path.
+# checkout plus a full SHA-256 hash of that path: the path alone isn't
+# collision-proof, since replacing `/` with `-` isn't injective (e.g.
+# `plans/foo-bar.md` and `plans/foo/bar.md` would otherwise both map to
+# `plans-foo-bar`), and the full hash makes a collision between two distinct
+# paths cryptographically infeasible rather than mathematically impossible —
+# a truncated hash would only have made it merely unlikely. Prints the
+# directory's absolute path.
 #
 # Usage: sdd-workspace PLAN_FILE
 set -euo pipefail

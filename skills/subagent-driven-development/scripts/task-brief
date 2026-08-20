@@ -27,14 +27,19 @@ out="$dir/task-${n}-brief.md"
 tmp_out="$out.tmp.$$"
 
 awk -v n="$n" '
-  match($0, /^(`{3,}|~{3,})/) {
-    mchar = substr($0, RSTART, 1)
-    mlen = RLENGTH
+  match($0, /^[ ]{0,3}(`{3,}|~{3,})/) {
+    seg = substr($0, RSTART, RLENGTH)
+    gsub(/^ +/, "", seg)
+    mchar = substr(seg, 1, 1)
+    mlen = length(seg)
+    rest = substr($0, RSTART + RLENGTH)
     if (!infence) { infence = 1; fchar = mchar; flen = mlen }
-    else if (mchar == fchar && mlen >= flen) { infence = 0 }
+    else if (mchar == fchar && mlen >= flen && rest ~ /^[ \t]*$/) { infence = 0 }
   }
-  !infence && /^#+[ \t]+Task[ \t]+[0-9]+/ {
-    intask = ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)"))
+  !infence && match($0, /^#+/) {
+    level = RLENGTH
+    if (intask && level <= tasklevel) { intask = 0 }
+    if ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)")) { intask = 1; tasklevel = level }
   }
   intask { print }
 ' "$plan" > "$tmp_out"
