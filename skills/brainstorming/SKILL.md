@@ -120,6 +120,8 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Consumer inventory:** Does the spec create, expand, or change a closed set (models, tiers, routes, modes, statuses, enum values)? For an existing set, grep its definition and every direct consumer. For a newly created or expanded set, also grep each newly admitted value across the repo — a test, fixture, or doc may use it as a negative example without naming the set. Either way, include helpers, fallbacks, outage/benchmark tooling, tests, and workflow comments, and account for each one explicitly.
+6. **Contract restatements:** Does the spec redefine a formula, contract, or rule stated elsewhere? Grep sibling docs and parent specs for restatements of it and reconcile them.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
@@ -129,7 +131,8 @@ After self-review passes, run a read-only external spec review with the
 
 Resolve the reviewer with `model-route reviewer unknown` (or the exact author
 model when provenance is tracked), then invoke that route's matching
-`*-review-spec` wrapper with `--policy-route <spec-file>`. There is no
+`*-review-spec` wrapper with `--author <model> --policy-route <spec-file>`, passing the
+same author value given to `model-route`. There is no
 same-harness, automatic alternate-harness, or built-in-model fallback — a
 missing wrapper or unavailable model stops with `needs-user` rather than
 reviewing in the current harness and noting a fallback.
