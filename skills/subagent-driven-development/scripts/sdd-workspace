@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Resolve (and create) this plan's git-ignored workspace directory: home to
+# its ledger and task briefs. Rooted at the primary checkout, not the current
+# worktree, so it survives worktree removal and stays visible from every
+# sibling worktree. Keyed by the plan file's path relative to the primary
+# checkout, not its bare basename, so two differently-pathed plans can never
+# share a workspace even if their filenames collide. Prints the directory's
+# absolute path.
+#
+# Usage: sdd-workspace PLAN_FILE
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo "usage: sdd-workspace PLAN_FILE" >&2
+  exit 2
+fi
+
+plan=$1
+[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+
+root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+plan_rel="$(realpath --relative-to="$root" "$plan")"
+slug="$(printf '%s' "$plan_rel" | sed 's/\.md$//; s#/#-#g')"
+dir="$root/tmp/subagent-driven-development/$slug"
+mkdir -p "$dir"
+echo "$dir"

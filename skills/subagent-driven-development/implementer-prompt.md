@@ -14,7 +14,8 @@ route.
 
     ## Task Description
 
-    [FULL TEXT of task from plan - paste it here, don't make subagent read file]
+    Read your task brief first: [BRIEF_FILE]
+    It contains the full text of this task from the plan.
 
     ## Context
 

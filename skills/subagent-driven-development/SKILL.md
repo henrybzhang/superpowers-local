@@ -56,7 +56,7 @@ digraph process {
 
     subgraph cluster_per_task {
         label="Per Task";
-        "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
+        "Record base SHA, run task-brief for task N, dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
@@ -66,18 +66,18 @@ digraph process {
         "Mark task complete in TodoWrite" [shape=box];
     }
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
+    "Read plan, resolve plan's ledger/workspace, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Verify full implementation" [shape=box];
     "Simplify, re-verify, self-check diff (workflow-policy implementation loop)" [shape=box];
     "Run final review-code loop for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Ensure isolated workspace (superpowers:using-git-worktrees)" -> "Read plan, extract all tasks with full text, note context, create TodoWrite";
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)";
-    "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
+    "Ensure isolated workspace (superpowers:using-git-worktrees)" -> "Read plan, resolve plan's ledger/workspace, note context, create TodoWrite";
+    "Read plan, resolve plan's ledger/workspace, note context, create TodoWrite" -> "Record base SHA, run task-brief for task N, dispatch implementer subagent (./implementer-prompt.md)";
+    "Record base SHA, run task-brief for task N, dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)";
+    "Answer questions, provide context" -> "Record base SHA, run task-brief for task N, dispatch implementer subagent (./implementer-prompt.md)";
     "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
     "Implementer subagent implements, tests, commits, self-reviews" -> "Controller checks task diff against task text";
     "Controller checks task diff against task text" -> "Diff matches spec (nothing missing, nothing extra)?";
@@ -85,7 +85,7 @@ digraph process {
     "Implementer subagent fixes spec gaps" -> "Controller checks task diff against task text" [label="re-check"];
     "Diff matches spec (nothing missing, nothing extra)?" -> "Mark task complete in TodoWrite" [label="yes"];
     "Mark task complete in TodoWrite" -> "More tasks remain?";
-    "More tasks remain?" -> "Record base SHA, dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
+    "More tasks remain?" -> "Record base SHA, run task-brief for task N, dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Verify full implementation" [label="no"];
     "Verify full implementation" -> "Simplify, re-verify, self-check diff (workflow-policy implementation loop)";
     "Simplify, re-verify, self-check diff (workflow-policy implementation loop)" -> "Run final review-code loop for entire implementation";
@@ -231,23 +231,27 @@ that lost their place have re-dispatched entire completed task sequences — the
 single most expensive failure observed. Track progress in a ledger file, not
 only in todos.
 
-- At skill start, resolve the ledger against the **primary checkout**, not the
-  current worktree:
-  `SP_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"`.
-  `--show-toplevel` returns whichever worktree you happen to be in, so a run
-  inside `./.worktrees/<branch>` would write a ledger that dies with the
-  worktree and is invisible from everywhere else — re-dispatching every
-  completed task, which is the failure this ledger exists to prevent.
-- Then check for a ledger:
-  `cat "$SP_ROOT/tmp/subagent-driven-development/progress.md"`. A missing
-  ledger is normal — it means no tasks are complete yet; create the directory
-  before the first append
-  (`mkdir -p "$SP_ROOT/tmp/subagent-driven-development"`). Tasks listed there
-  as complete are DONE — do not re-dispatch them; resume at the first task not
-  marked complete.
+- At skill start, resolve this plan's workspace: run this skill's
+  `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored
+  directory, rooted at the **primary checkout** rather than the current
+  worktree (`--show-toplevel` returns whichever worktree you happen to be in,
+  so a run inside `./.worktrees/<branch>` would write a ledger that dies with
+  the worktree and is invisible from everywhere else — re-dispatching every
+  completed task, which is the failure this ledger exists to prevent), and
+  keyed by the plan file's path so a second plan run in the same working tree
+  never misreads a first plan's progress as its own.
+- Then check for a ledger: `cat "<workspace>/progress.md"`. A missing ledger
+  is normal — it means no tasks are complete yet; write its first line as
+  `# SDD ledger — plan: <plan file path>` before the first append. Tasks
+  listed there as complete are DONE — do not re-dispatch them; resume at the
+  first task not marked complete. A ledger whose first line names a different
+  plan file — or a stray ledger at the old flat path
+  `tmp/subagent-driven-development/progress.md` — belongs to something else:
+  leave it in place and start your own, fresh.
 - Also at skill start, make sure the ledger stays out of `git status` — the
   per-task clean-worktree gate depends on it. Ensure the repo-local
-  (uncommitted) exclude covers it; one append covers every worktree:
+  (uncommitted) exclude covers it; one append covers every worktree and every
+  plan's workspace:
   `f="$(git rev-parse --git-common-dir)/info/exclude"; grep -qxF 'tmp/subagent-driven-development/' "$f" 2>/dev/null || echo 'tmp/subagent-driven-development/' >> "$f"`
 - When a task's spec check passes, append one line to the ledger in the
   same message as your other bookkeeping:
@@ -258,10 +262,23 @@ only in todos.
 - `git clean -fdx` will destroy the ledger (it's git-ignored scratch); if that
   happens, recover from `git log`.
 
+## Task Briefs
+
+Before dispatching an implementer, run this skill's `scripts/task-brief
+PLAN_FILE N` — it extracts task N's full text from the plan into this plan's
+workspace (`task-N-brief.md`, resolved the same way as the ledger) and prints
+the path. Hand the implementer that path instead of pasting the task text:
+everything pasted into a dispatch prompt stays resident in your context for
+the rest of the session and is re-read on every later turn, and that cost
+compounds across a plan's tasks. Never make a subagent read the whole plan
+file.
+
 ## Prompt Templates
 
 - `./implementer-prompt.md` - Dispatch implementer subagent (fill its dispatch
   header with the route resolved in Model Selection)
+- `scripts/task-brief` - Extract one task's text into this plan's workspace
+- `scripts/sdd-workspace` - Resolve this plan's ledger/brief directory
 
 ## Example Workflow
 
@@ -270,14 +287,13 @@ You: I'm using Subagent-Driven Development to execute this plan.
 
 [Ensure isolated workspace (worktree)]
 [Read plan file once: PLAN.md]
-[Extract all 5 tasks with full text and context]
+[Resolve workspace: scripts/sdd-workspace PLAN.md — no ledger inside, fresh start]
 [Create task tracker entries for all 5 tasks]
 
 Task 1: Hook installation script
 
 [Record base SHA]
-[Get Task 1 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
+[Run scripts/task-brief PLAN.md 1; dispatch implementer with brief path + context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
@@ -298,8 +314,7 @@ Implementer: "Got it. Implementing now..."
 Task 2: Recovery modes
 
 [Record base SHA]
-[Get Task 2 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
+[Run scripts/task-brief PLAN.md 2; dispatch implementer with brief path + context]
 
 Implementer: [No questions, proceeds]
 Implementer:
@@ -352,9 +367,10 @@ Done!
 - Review checkpoints automatic
 
 **Efficiency gains:**
-- No file reading overhead (controller provides full text)
+- Task text lives in a brief file, not the controller's context — no
+  per-task text pasted, re-read, and accumulated across the whole plan
 - Controller curates exactly what context is needed
-- Subagent gets complete information upfront
+- Subagent reads its complete task in one file, one call
 - Questions surfaced before work begins (not after)
 
 **Quality gates:**
@@ -366,7 +382,7 @@ Done!
 
 **Cost:**
 - One implementer subagent per task, plus fix dispatches
-- Controller does more prep work (extracting all tasks upfront, checking each diff)
+- Controller does more prep work (running task-brief per task, checking each diff)
 - Final review loop adds iterations
 - But catches spec drift early (cheaper than unwinding dependent tasks)
 
@@ -377,7 +393,7 @@ Done!
 - Skip the per-task spec check or the final review-code loop
 - Proceed with unfixed issues
 - Dispatch multiple implementation subagents in parallel (conflicts)
-- Make subagent read plan file (provide full text instead)
+- Make subagent read the whole plan file (give it its task-brief file instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
 - Accept "close enough" on the spec check (gaps found = not done)
