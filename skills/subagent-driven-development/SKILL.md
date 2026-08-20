@@ -242,12 +242,19 @@ only in todos.
   never misreads a first plan's progress as its own.
 - Then check for a ledger: `cat "<workspace>/progress.md"`. A missing ledger
   is normal — it means no tasks are complete yet; write its first line as
-  `# SDD ledger — plan: <plan file path>` before the first append. Tasks
-  listed there as complete are DONE — do not re-dispatch them; resume at the
-  first task not marked complete. A ledger whose first line names a different
-  plan file — or a stray ledger at the old flat path
-  `tmp/subagent-driven-development/progress.md` — belongs to something else:
-  leave it in place and start your own, fresh.
+  `# SDD ledger — plan: <plan file path> (<plan content hash>)`, where the
+  hash is `sha256sum "$PLAN_FILE" | cut -c1-64`, before the first append. A
+  ledger whose first line names a different plan file — or a stray ledger at
+  the old flat path `tmp/subagent-driven-development/progress.md` — belongs
+  to something else: leave it in place and start your own, fresh. A ledger
+  naming *this* plan is trusted only when its first line also carries a
+  content hash matching the plan's current one: a missing hash (a ledger
+  written before this format existed), a malformed one, or one that doesn't
+  match all mean the same thing — either the plan changed, or you can't tell
+  whether it did — so stop and ask your human partner which completed tasks
+  need to be redone against the current text, rather than guessing either
+  way. Otherwise, tasks listed as complete are DONE — do not re-dispatch
+  them; resume at the first task not marked complete.
 - Also at skill start, make sure the ledger stays out of `git status` — the
   per-task clean-worktree gate depends on it. Ensure the repo-local
   (uncommitted) exclude covers it; one append covers every worktree and every

@@ -3,9 +3,12 @@
 # its ledger and task briefs. Rooted at the primary checkout, not the current
 # worktree, so it survives worktree removal and stays visible from every
 # sibling worktree. Keyed by the plan file's path relative to the primary
-# checkout, not its bare basename, so two differently-pathed plans can never
-# share a workspace even if their filenames collide. Prints the directory's
-# absolute path.
+# checkout plus a full SHA-256 hash of that path, so two differently-pathed
+# plans get distinct workspaces — the path alone isn't collision-proof, since
+# replacing `/` with `-` isn't injective (e.g. `plans/foo-bar.md` and
+# `plans/foo/bar.md` would otherwise both map to `plans-foo-bar`), and a
+# truncated hash would only make a collision unlikely rather than ruling it
+# out. Prints the directory's absolute path.
 #
 # Usage: sdd-workspace PLAN_FILE
 set -euo pipefail
@@ -20,7 +23,8 @@ plan=$1
 
 root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 plan_rel="$(realpath --relative-to="$root" "$plan")"
-slug="$(printf '%s' "$plan_rel" | sed 's/\.md$//; s#/#-#g')"
-dir="$root/tmp/subagent-driven-development/$slug"
+readable="$(printf '%s' "$plan_rel" | sed 's/\.md$//; s#/#-#g')"
+digest="$(printf '%s' "$plan_rel" | sha256sum | cut -c1-64)"
+dir="$root/tmp/subagent-driven-development/${readable}-${digest}"
 mkdir -p "$dir"
 echo "$dir"
